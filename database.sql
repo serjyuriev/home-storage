@@ -22,7 +22,7 @@ CREATE TABLE items (
     rate                  consumption_rate,
     unit                  TEXT                 NOT NULL DEFAULT 'pcs',
     notes                 TEXT,
-    updated_at            TIMESTAMPTZ          NOT NULL
+    updated_at            TIMESTAMPTZ          NOT NULL DEFAULT NOW()
 );
 
 -- история изменения количества вещей (с партиционированием)
@@ -32,7 +32,7 @@ CREATE TABLE stock_history (
     change_amount  NUMERIC     NOT NULL, -- положительное - закупка; отрицательное - использование
     qty_after      NUMERIC     NOT NULL, -- количество после изменения
     reason         TEXT,
-    changed_at     TIMESTAMPTZ NOT NULL
+    changed_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 ) PARTITION BY RANGE (changed_at);
 
 CREATE TABLE stock_history_2024

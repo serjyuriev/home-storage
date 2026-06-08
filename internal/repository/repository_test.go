@@ -1,6 +1,7 @@
 package repository_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -67,11 +68,12 @@ func testItem(t *testing.T, db *gorm.DB, catID *int, name string, qty, threshold
 func TestGetCategories(t *testing.T) {
 	db := openTestDB(t)
 	repo := repository.NewDBRepository(db)
+	ctx := context.Background()
 
 	a := testCategory(t, db)
 	b := testCategory(t, db)
 
-	results, err := repo.GetCategories()
+	results, err := repo.GetCategories(ctx)
 	if err != nil {
 		t.Fatalf("GetCategories: %v", err)
 	}
@@ -88,12 +90,13 @@ func TestGetCategories(t *testing.T) {
 func TestGetItems(t *testing.T) {
 	db := openTestDB(t)
 	repo := repository.NewDBRepository(db)
+	ctx := context.Background()
 
 	cat := testCategory(t, db)
 	catID := cat.ID
 	item := testItem(t, db, &catID, fmt.Sprintf("test_item_%d", time.Now().UnixNano()), 10, 3)
 
-	results, err := repo.GetItems()
+	results, err := repo.GetItems(ctx)
 	if err != nil {
 		t.Fatalf("GetItems: %v", err)
 	}
@@ -116,6 +119,7 @@ func TestGetItems(t *testing.T) {
 func TestGetStockStatus(t *testing.T) {
 	db := openTestDB(t)
 	repo := repository.NewDBRepository(db)
+	ctx := context.Background()
 
 	cat := testCategory(t, db)
 	catID := cat.ID
@@ -125,7 +129,7 @@ func TestGetStockStatus(t *testing.T) {
 	lowItem := testItem(t, db, &catID, fmt.Sprintf("test_low_%d", suffix), 2, 3)
 	outItem := testItem(t, db, &catID, fmt.Sprintf("test_out_%d", suffix), 0, 3)
 
-	results, err := repo.GetStockStatus()
+	results, err := repo.GetStockStatus(ctx)
 	if err != nil {
 		t.Fatalf("GetStockStatus: %v", err)
 	}
@@ -153,6 +157,7 @@ func TestGetStockStatus(t *testing.T) {
 func TestGetLowStock(t *testing.T) {
 	db := openTestDB(t)
 	repo := repository.NewDBRepository(db)
+	ctx := context.Background()
 
 	cat := testCategory(t, db)
 	catID := cat.ID
@@ -161,7 +166,7 @@ func TestGetLowStock(t *testing.T) {
 	lowItem := testItem(t, db, &catID, fmt.Sprintf("test_low_%d", suffix), 1, 5)
 	okItem := testItem(t, db, &catID, fmt.Sprintf("test_ok_%d", suffix), 10, 5)
 
-	results, err := repo.GetLowStock()
+	results, err := repo.GetLowStock(ctx)
 	if err != nil {
 		t.Fatalf("GetLowStock: %v", err)
 	}
@@ -181,6 +186,7 @@ func TestGetLowStock(t *testing.T) {
 func TestGetItemByID(t *testing.T) {
 	db := openTestDB(t)
 	repo := repository.NewDBRepository(db)
+	ctx := context.Background()
 
 	cat := testCategory(t, db)
 	catID := cat.ID
@@ -188,7 +194,7 @@ func TestGetItemByID(t *testing.T) {
 	t.Run("returns item and nil days_remaining when no rate set", func(t *testing.T) {
 		item := testItem(t, db, &catID, fmt.Sprintf("test_item_%d", time.Now().UnixNano()), 5, 2)
 
-		got, err := repo.GetItemByID(item.ID)
+		got, err := repo.GetItemByID(ctx, item.ID)
 		if err != nil {
 			t.Fatalf("GetItemByID: %v", err)
 		}
@@ -213,7 +219,7 @@ func TestGetItemByID(t *testing.T) {
 			t.Fatalf("set rate: %v", err)
 		}
 
-		got, err := repo.GetItemByID(item.ID)
+		got, err := repo.GetItemByID(ctx, item.ID)
 		if err != nil {
 			t.Fatalf("GetItemByID: %v", err)
 		}
@@ -227,7 +233,7 @@ func TestGetItemByID(t *testing.T) {
 	})
 
 	t.Run("non-existent id returns ErrNotFound", func(t *testing.T) {
-		_, err := repo.GetItemByID(-1)
+		_, err := repo.GetItemByID(ctx, -1)
 		if !errors.Is(err, repository.ErrNotFound) {
 			t.Errorf("error: got %v, want ErrNotFound", err)
 		}
@@ -237,6 +243,7 @@ func TestGetItemByID(t *testing.T) {
 func TestGetMonthlyAnalytics(t *testing.T) {
 	db := openTestDB(t)
 	repo := repository.NewDBRepository(db)
+	ctx := context.Background()
 
 	// Set up fixtures manually to control the cleanup order precisely:
 	// stock_history must be deleted before refreshing the view for a clean state.
@@ -282,7 +289,7 @@ func TestGetMonthlyAnalytics(t *testing.T) {
 	})
 
 	t.Run("no filter includes our test item", func(t *testing.T) {
-		results, err := repo.GetMonthlyAnalytics(nil)
+		results, err := repo.GetMonthlyAnalytics(ctx, nil)
 		if err != nil {
 			t.Fatalf("GetMonthlyAnalytics(nil): %v", err)
 		}
@@ -306,7 +313,7 @@ func TestGetMonthlyAnalytics(t *testing.T) {
 	})
 
 	t.Run("item_id filter returns only rows for that item", func(t *testing.T) {
-		results, err := repo.GetMonthlyAnalytics(&item.ID)
+		results, err := repo.GetMonthlyAnalytics(ctx, &item.ID)
 		if err != nil {
 			t.Fatalf("GetMonthlyAnalytics(itemID): %v", err)
 		}
@@ -324,10 +331,11 @@ func TestGetMonthlyAnalytics(t *testing.T) {
 func TestCreateCategory(t *testing.T) {
 	db := openTestDB(t)
 	repo := repository.NewDBRepository(db)
+	ctx := context.Background()
 
 	t.Run("creates category and returns it with assigned id", func(t *testing.T) {
 		name := fmt.Sprintf("test_create_%d", time.Now().UnixNano())
-		got, err := repo.CreateCategory(name, "🧪")
+		got, err := repo.CreateCategory(ctx, name, "🧪")
 		if err != nil {
 			t.Fatalf("CreateCategory: %v", err)
 		}
@@ -342,7 +350,7 @@ func TestCreateCategory(t *testing.T) {
 
 	t.Run("returns ErrDuplicate for existing name", func(t *testing.T) {
 		// "Bathroom" is one of the seed categories defined in database.sql.
-		_, err := repo.CreateCategory("Bathroom", "")
+		_, err := repo.CreateCategory(ctx, "Bathroom", "")
 		if !errors.Is(err, repository.ErrDuplicate) {
 			t.Errorf("expected ErrDuplicate, got %v", err)
 		}
@@ -352,6 +360,7 @@ func TestCreateCategory(t *testing.T) {
 func TestConsumeItem(t *testing.T) {
 	db := openTestDB(t)
 	repo := repository.NewDBRepository(db)
+	ctx := context.Background()
 
 	cat := testCategory(t, db)
 	catID := cat.ID
@@ -361,7 +370,7 @@ func TestConsumeItem(t *testing.T) {
 		// Cleanup stock_history created by the trigger when log_usage updates qty_current.
 		t.Cleanup(func() { db.Exec("DELETE FROM stock_history WHERE item_id = ?", item.ID) })
 
-		if err := repo.ConsumeItem(item.ID, 2, "test usage"); err != nil {
+		if err := repo.ConsumeItem(ctx, item.ID, 2, "test usage"); err != nil {
 			t.Fatalf("ConsumeItem: %v", err)
 		}
 
@@ -375,7 +384,7 @@ func TestConsumeItem(t *testing.T) {
 	t.Run("returns ErrInsufficientStock when amount exceeds qty_current", func(t *testing.T) {
 		item := testItem(t, db, &catID, fmt.Sprintf("test_low_%d", time.Now().UnixNano()), 1, 0)
 
-		err := repo.ConsumeItem(item.ID, 5, "test")
+		err := repo.ConsumeItem(ctx, item.ID, 5, "test")
 		if !errors.Is(err, repository.ErrInsufficientStock) {
 			t.Errorf("expected ErrInsufficientStock, got %v", err)
 		}
@@ -383,7 +392,7 @@ func TestConsumeItem(t *testing.T) {
 	})
 
 	t.Run("returns ErrNotFound for non-existent item", func(t *testing.T) {
-		err := repo.ConsumeItem(-1, 1, "test")
+		err := repo.ConsumeItem(ctx, -1, 1, "test")
 		if !errors.Is(err, repository.ErrNotFound) {
 			t.Errorf("expected ErrNotFound, got %v", err)
 		}
@@ -393,6 +402,7 @@ func TestConsumeItem(t *testing.T) {
 func TestRestockItem(t *testing.T) {
 	db := openTestDB(t)
 	repo := repository.NewDBRepository(db)
+	ctx := context.Background()
 
 	cat := testCategory(t, db)
 	catID := cat.ID
@@ -403,7 +413,7 @@ func TestRestockItem(t *testing.T) {
 		// (reason=NULL) and one inserted manually by the procedure (reason="restock").
 		t.Cleanup(func() { db.Exec("DELETE FROM stock_history WHERE item_id = ?", item.ID) })
 
-		if err := repo.RestockItem(item.ID, 3, nil); err != nil {
+		if err := repo.RestockItem(ctx, item.ID, 3, nil); err != nil {
 			t.Fatalf("RestockItem: %v", err)
 		}
 
@@ -419,7 +429,7 @@ func TestRestockItem(t *testing.T) {
 		t.Cleanup(func() { db.Exec("DELETE FROM stock_history WHERE item_id = ?", item.ID) })
 
 		price := 9.99
-		if err := repo.RestockItem(item.ID, 2, &price); err != nil {
+		if err := repo.RestockItem(ctx, item.ID, 2, &price); err != nil {
 			t.Fatalf("RestockItem with price: %v", err)
 		}
 
@@ -435,7 +445,7 @@ func TestRestockItem(t *testing.T) {
 	})
 
 	t.Run("returns ErrNotFound for non-existent item", func(t *testing.T) {
-		err := repo.RestockItem(-1, 1, nil)
+		err := repo.RestockItem(ctx, -1, 1, nil)
 		if !errors.Is(err, repository.ErrNotFound) {
 			t.Errorf("expected ErrNotFound, got %v", err)
 		}

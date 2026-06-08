@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -26,16 +27,16 @@ type RestockRequest struct {
 }
 
 type Repository interface {
-	GetStockStatus() ([]models.StockStatus, error)
-	GetLowStock() ([]models.Item, error)
-	GetCategories() ([]models.Category, error)
-	GetItems() ([]models.ItemWithCategory, error)
-	GetItemByID(id int) (*models.ItemDetail, error)
-	GetMonthlyAnalytics(itemID *int) ([]models.MonthlyConsumption, error)
+	GetStockStatus(ctx context.Context) ([]models.StockStatus, error)
+	GetLowStock(ctx context.Context) ([]models.Item, error)
+	GetCategories(ctx context.Context) ([]models.Category, error)
+	GetItems(ctx context.Context) ([]models.ItemWithCategory, error)
+	GetItemByID(ctx context.Context, id int) (*models.ItemDetail, error)
+	GetMonthlyAnalytics(ctx context.Context, itemID *int) ([]models.MonthlyConsumption, error)
 
-	CreateCategory(name, iconEmoji string) (*models.Category, error)
-	ConsumeItem(id int, amount float64, reason string) error
-	RestockItem(id int, amount float64, pricePaid *float64) error
+	CreateCategory(ctx context.Context, name, iconEmoji string) (*models.Category, error)
+	ConsumeItem(ctx context.Context, id int, amount float64, reason string) error
+	RestockItem(ctx context.Context, id int, amount float64, pricePaid *float64) error
 }
 
 type Handler struct {
@@ -47,7 +48,7 @@ func New(repo Repository) *Handler {
 }
 
 func (h *Handler) GetStatus(c *gin.Context) {
-	results, err := h.repo.GetStockStatus()
+	results, err := h.repo.GetStockStatus(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -56,7 +57,7 @@ func (h *Handler) GetStatus(c *gin.Context) {
 }
 
 func (h *Handler) GetLowStock(c *gin.Context) {
-	results, err := h.repo.GetLowStock()
+	results, err := h.repo.GetLowStock(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -65,7 +66,7 @@ func (h *Handler) GetLowStock(c *gin.Context) {
 }
 
 func (h *Handler) GetCategories(c *gin.Context) {
-	results, err := h.repo.GetCategories()
+	results, err := h.repo.GetCategories(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -74,7 +75,7 @@ func (h *Handler) GetCategories(c *gin.Context) {
 }
 
 func (h *Handler) GetItems(c *gin.Context) {
-	results, err := h.repo.GetItems()
+	results, err := h.repo.GetItems(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -89,7 +90,7 @@ func (h *Handler) GetItemByID(c *gin.Context) {
 		return
 	}
 
-	item, err := h.repo.GetItemByID(id)
+	item, err := h.repo.GetItemByID(c.Request.Context(), id)
 	if errors.Is(err, repository.ErrNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
 		return
@@ -107,7 +108,7 @@ func (h *Handler) CreateCategory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	cat, err := h.repo.CreateCategory(req.Name, req.IconEmoji)
+	cat, err := h.repo.CreateCategory(c.Request.Context(), req.Name, req.IconEmoji)
 	if errors.Is(err, repository.ErrDuplicate) {
 		c.JSON(http.StatusConflict, gin.H{"error": "category name already exists"})
 		return
@@ -133,7 +134,7 @@ func (h *Handler) ConsumeItem(c *gin.Context) {
 	if req.Reason == "" {
 		req.Reason = "used"
 	}
-	err = h.repo.ConsumeItem(id, req.Amount, req.Reason)
+	err = h.repo.ConsumeItem(c.Request.Context(), id, req.Amount, req.Reason)
 	if errors.Is(err, repository.ErrNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
 		return
@@ -160,7 +161,7 @@ func (h *Handler) RestockItem(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err = h.repo.RestockItem(id, req.Amount, req.PricePaid)
+	err = h.repo.RestockItem(c.Request.Context(), id, req.Amount, req.PricePaid)
 	if errors.Is(err, repository.ErrNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
 		return
@@ -183,7 +184,7 @@ func (h *Handler) GetMonthlyAnalytics(c *gin.Context) {
 		itemID = &id
 	}
 
-	results, err := h.repo.GetMonthlyAnalytics(itemID)
+	results, err := h.repo.GetMonthlyAnalytics(c.Request.Context(), itemID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

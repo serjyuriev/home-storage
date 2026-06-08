@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -28,39 +29,43 @@ func TestMain(m *testing.M) {
 }
 
 type MockRepository struct {
-	GetStockStatusFn      func() ([]models.StockStatus, error)
-	GetLowStockFn         func() ([]models.Item, error)
-	GetCategoriesFn       func() ([]models.Category, error)
-	GetItemsFn            func() ([]models.ItemWithCategory, error)
-	GetItemByIDFn         func(id int) (*models.ItemDetail, error)
-	GetMonthlyAnalyticsFn func(itemID *int) ([]models.MonthlyConsumption, error)
-	CreateCategoryFn      func(name, iconEmoji string) (*models.Category, error)
-	ConsumeItemFn         func(id int, amount float64, reason string) error
-	RestockItemFn         func(id int, amount float64, pricePaid *float64) error
+	GetStockStatusFn      func(ctx context.Context) ([]models.StockStatus, error)
+	GetLowStockFn         func(ctx context.Context) ([]models.Item, error)
+	GetCategoriesFn       func(ctx context.Context) ([]models.Category, error)
+	GetItemsFn            func(ctx context.Context) ([]models.ItemWithCategory, error)
+	GetItemByIDFn         func(ctx context.Context, id int) (*models.ItemDetail, error)
+	GetMonthlyAnalyticsFn func(ctx context.Context, itemID *int) ([]models.MonthlyConsumption, error)
+	CreateCategoryFn      func(ctx context.Context, name, iconEmoji string) (*models.Category, error)
+	ConsumeItemFn         func(ctx context.Context, id int, amount float64, reason string) error
+	RestockItemFn         func(ctx context.Context, id int, amount float64, pricePaid *float64) error
 }
 
-func (m *MockRepository) GetStockStatus() ([]models.StockStatus, error) {
-	return m.GetStockStatusFn()
+func (m *MockRepository) GetStockStatus(ctx context.Context) ([]models.StockStatus, error) {
+	return m.GetStockStatusFn(ctx)
 }
-func (m *MockRepository) GetLowStock() ([]models.Item, error) { return m.GetLowStockFn() }
-func (m *MockRepository) GetCategories() ([]models.Category, error) {
-	return m.GetCategoriesFn()
+func (m *MockRepository) GetLowStock(ctx context.Context) ([]models.Item, error) {
+	return m.GetLowStockFn(ctx)
 }
-func (m *MockRepository) GetItems() ([]models.ItemWithCategory, error) { return m.GetItemsFn() }
-func (m *MockRepository) GetItemByID(id int) (*models.ItemDetail, error) {
-	return m.GetItemByIDFn(id)
+func (m *MockRepository) GetCategories(ctx context.Context) ([]models.Category, error) {
+	return m.GetCategoriesFn(ctx)
 }
-func (m *MockRepository) GetMonthlyAnalytics(itemID *int) ([]models.MonthlyConsumption, error) {
-	return m.GetMonthlyAnalyticsFn(itemID)
+func (m *MockRepository) GetItems(ctx context.Context) ([]models.ItemWithCategory, error) {
+	return m.GetItemsFn(ctx)
 }
-func (m *MockRepository) CreateCategory(name, iconEmoji string) (*models.Category, error) {
-	return m.CreateCategoryFn(name, iconEmoji)
+func (m *MockRepository) GetItemByID(ctx context.Context, id int) (*models.ItemDetail, error) {
+	return m.GetItemByIDFn(ctx, id)
 }
-func (m *MockRepository) ConsumeItem(id int, amount float64, reason string) error {
-	return m.ConsumeItemFn(id, amount, reason)
+func (m *MockRepository) GetMonthlyAnalytics(ctx context.Context, itemID *int) ([]models.MonthlyConsumption, error) {
+	return m.GetMonthlyAnalyticsFn(ctx, itemID)
 }
-func (m *MockRepository) RestockItem(id int, amount float64, pricePaid *float64) error {
-	return m.RestockItemFn(id, amount, pricePaid)
+func (m *MockRepository) CreateCategory(ctx context.Context, name, iconEmoji string) (*models.Category, error) {
+	return m.CreateCategoryFn(ctx, name, iconEmoji)
+}
+func (m *MockRepository) ConsumeItem(ctx context.Context, id int, amount float64, reason string) error {
+	return m.ConsumeItemFn(ctx, id, amount, reason)
+}
+func (m *MockRepository) RestockItem(ctx context.Context, id int, amount float64, pricePaid *float64) error {
+	return m.RestockItemFn(ctx, id, amount, pricePaid)
 }
 
 func newTestRouter(mock *MockRepository) *gin.Engine {
@@ -73,13 +78,13 @@ func TestGetStatus(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		mockFn     func() ([]models.StockStatus, error)
+		mockFn     func(ctx context.Context) ([]models.StockStatus, error)
 		wantStatus int
 		wantCount  int
 	}{
 		{
 			name: "returns full list ordered by status",
-			mockFn: func() ([]models.StockStatus, error) {
+			mockFn: func(ctx context.Context) ([]models.StockStatus, error) {
 				return []models.StockStatus{
 					{ID: 1, Name: "Soap", Category: &cat, Status: "out", UpdatedAt: now},
 					{ID: 2, Name: "Shampoo", Category: &cat, Status: "ok", UpdatedAt: now},
@@ -90,13 +95,13 @@ func TestGetStatus(t *testing.T) {
 		},
 		{
 			name:       "empty inventory returns empty array",
-			mockFn:     func() ([]models.StockStatus, error) { return []models.StockStatus{}, nil },
+			mockFn:     func(ctx context.Context) ([]models.StockStatus, error) { return []models.StockStatus{}, nil },
 			wantStatus: http.StatusOK,
 			wantCount:  0,
 		},
 		{
 			name:       "db error returns 500",
-			mockFn:     func() ([]models.StockStatus, error) { return nil, errors.New("connection lost") },
+			mockFn:     func(ctx context.Context) ([]models.StockStatus, error) { return nil, errors.New("connection lost") },
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -124,13 +129,13 @@ func TestGetStatus(t *testing.T) {
 func TestGetLowStock(t *testing.T) {
 	tests := []struct {
 		name       string
-		mockFn     func() ([]models.Item, error)
+		mockFn     func(ctx context.Context) ([]models.Item, error)
 		wantStatus int
 		wantCount  int
 	}{
 		{
 			name: "returns low-stock items",
-			mockFn: func() ([]models.Item, error) {
+			mockFn: func(ctx context.Context) ([]models.Item, error) {
 				return []models.Item{{ID: 3, Name: "Toothpaste", QtyCurrent: 1, QtyRestockThreshold: 2}}, nil
 			},
 			wantStatus: http.StatusOK,
@@ -138,13 +143,13 @@ func TestGetLowStock(t *testing.T) {
 		},
 		{
 			name:       "nothing low returns empty array",
-			mockFn:     func() ([]models.Item, error) { return []models.Item{}, nil },
+			mockFn:     func(ctx context.Context) ([]models.Item, error) { return []models.Item{}, nil },
 			wantStatus: http.StatusOK,
 			wantCount:  0,
 		},
 		{
 			name:       "db error returns 500",
-			mockFn:     func() ([]models.Item, error) { return nil, errors.New("timeout") },
+			mockFn:     func(ctx context.Context) ([]models.Item, error) { return nil, errors.New("timeout") },
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -172,13 +177,13 @@ func TestGetLowStock(t *testing.T) {
 func TestGetCategories(t *testing.T) {
 	tests := []struct {
 		name       string
-		mockFn     func() ([]models.Category, error)
+		mockFn     func(ctx context.Context) ([]models.Category, error)
 		wantStatus int
 		wantCount  int
 	}{
 		{
 			name: "returns all categories",
-			mockFn: func() ([]models.Category, error) {
+			mockFn: func(ctx context.Context) ([]models.Category, error) {
 				return []models.Category{
 					{ID: 1, Name: "Bathroom", IconEmoji: "🛁"},
 					{ID: 2, Name: "Pantry", IconEmoji: "🍚"},
@@ -189,7 +194,7 @@ func TestGetCategories(t *testing.T) {
 		},
 		{
 			name:       "db error returns 500",
-			mockFn:     func() ([]models.Category, error) { return nil, errors.New("db error") },
+			mockFn:     func(ctx context.Context) ([]models.Category, error) { return nil, errors.New("db error") },
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -219,13 +224,13 @@ func TestGetItems(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		mockFn     func() ([]models.ItemWithCategory, error)
+		mockFn     func(ctx context.Context) ([]models.ItemWithCategory, error)
 		wantStatus int
 		wantCount  int
 	}{
 		{
 			name: "returns items with category names",
-			mockFn: func() ([]models.ItemWithCategory, error) {
+			mockFn: func(ctx context.Context) ([]models.ItemWithCategory, error) {
 				return []models.ItemWithCategory{
 					{ID: 1, Name: "Soap", Category: &cat, QtyCurrent: 5, Unit: "pcs"},
 				}, nil
@@ -235,7 +240,7 @@ func TestGetItems(t *testing.T) {
 		},
 		{
 			name:       "db error returns 500",
-			mockFn:     func() ([]models.ItemWithCategory, error) { return nil, errors.New("db error") },
+			mockFn:     func(ctx context.Context) ([]models.ItemWithCategory, error) { return nil, errors.New("db error") },
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -267,14 +272,14 @@ func TestGetItemByID(t *testing.T) {
 	tests := []struct {
 		name       string
 		urlID      string
-		mockFn     func(id int) (*models.ItemDetail, error)
+		mockFn     func(ctx context.Context, id int) (*models.ItemDetail, error)
 		wantStatus int
 		checkBody  func(t *testing.T, body []byte)
 	}{
 		{
 			name:  "returns item with days_remaining",
 			urlID: "1",
-			mockFn: func(id int) (*models.ItemDetail, error) {
+			mockFn: func(ctx context.Context, id int) (*models.ItemDetail, error) {
 				if id != 1 {
 					t.Errorf("unexpected id passed to repo: %d", id)
 				}
@@ -298,7 +303,7 @@ func TestGetItemByID(t *testing.T) {
 		{
 			name:  "returns item with nil days_remaining when rate not set",
 			urlID: "2",
-			mockFn: func(id int) (*models.ItemDetail, error) {
+			mockFn: func(ctx context.Context, id int) (*models.ItemDetail, error) {
 				return &models.ItemDetail{
 					ItemWithCategory: models.ItemWithCategory{ID: 2, Name: "Toothpaste"},
 					DaysRemaining:    nil,
@@ -316,7 +321,7 @@ func TestGetItemByID(t *testing.T) {
 		{
 			name:       "non-existent id returns 404",
 			urlID:      "999",
-			mockFn:     func(id int) (*models.ItemDetail, error) { return nil, repository.ErrNotFound },
+			mockFn:     func(ctx context.Context, id int) (*models.ItemDetail, error) { return nil, repository.ErrNotFound },
 			wantStatus: http.StatusNotFound,
 		},
 		{
@@ -328,7 +333,7 @@ func TestGetItemByID(t *testing.T) {
 		{
 			name:       "db error returns 500",
 			urlID:      "1",
-			mockFn:     func(id int) (*models.ItemDetail, error) { return nil, errors.New("db error") },
+			mockFn:     func(ctx context.Context, id int) (*models.ItemDetail, error) { return nil, errors.New("db error") },
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -339,7 +344,7 @@ func TestGetItemByID(t *testing.T) {
 			if tt.mockFn != nil {
 				mock.GetItemByIDFn = tt.mockFn
 			} else {
-				mock.GetItemByIDFn = func(id int) (*models.ItemDetail, error) {
+				mock.GetItemByIDFn = func(ctx context.Context, id int) (*models.ItemDetail, error) {
 					t.Error("repository should not have been called")
 					return nil, nil
 				}
@@ -363,14 +368,14 @@ func TestGetMonthlyAnalytics(t *testing.T) {
 	tests := []struct {
 		name       string
 		query      string
-		mockFn     func(itemID *int) ([]models.MonthlyConsumption, error)
+		mockFn     func(ctx context.Context, itemID *int) ([]models.MonthlyConsumption, error)
 		wantStatus int
 		wantCount  int
 	}{
 		{
 			name:  "no filter returns all rows",
 			query: "",
-			mockFn: func(itemID *int) ([]models.MonthlyConsumption, error) {
+			mockFn: func(ctx context.Context, itemID *int) ([]models.MonthlyConsumption, error) {
 				if itemID != nil {
 					t.Errorf("expected nil itemID, got %d", *itemID)
 				}
@@ -385,7 +390,7 @@ func TestGetMonthlyAnalytics(t *testing.T) {
 		{
 			name:  "item_id filter passes value to repository",
 			query: "?item_id=1",
-			mockFn: func(itemID *int) ([]models.MonthlyConsumption, error) {
+			mockFn: func(ctx context.Context, itemID *int) ([]models.MonthlyConsumption, error) {
 				if itemID == nil || *itemID != 1 {
 					t.Errorf("expected itemID=1, got %v", itemID)
 				}
@@ -403,9 +408,11 @@ func TestGetMonthlyAnalytics(t *testing.T) {
 			wantStatus: http.StatusBadRequest,
 		},
 		{
-			name:       "db error returns 500",
-			query:      "",
-			mockFn:     func(itemID *int) ([]models.MonthlyConsumption, error) { return nil, errors.New("db error") },
+			name:  "db error returns 500",
+			query: "",
+			mockFn: func(ctx context.Context, itemID *int) ([]models.MonthlyConsumption, error) {
+				return nil, errors.New("db error")
+			},
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -416,7 +423,7 @@ func TestGetMonthlyAnalytics(t *testing.T) {
 			if tt.mockFn != nil {
 				mock.GetMonthlyAnalyticsFn = tt.mockFn
 			} else {
-				mock.GetMonthlyAnalyticsFn = func(itemID *int) ([]models.MonthlyConsumption, error) {
+				mock.GetMonthlyAnalyticsFn = func(ctx context.Context, itemID *int) ([]models.MonthlyConsumption, error) {
 					t.Error("repository should not have been called")
 					return nil, nil
 				}
@@ -444,14 +451,14 @@ func TestCreateCategory(t *testing.T) {
 	tests := []struct {
 		name       string
 		body       any
-		mockFn     func(name, iconEmoji string) (*models.Category, error)
+		mockFn     func(ctx context.Context, name, iconEmoji string) (*models.Category, error)
 		wantStatus int
 		checkBody  func(t *testing.T, body []byte)
 	}{
 		{
 			name: "creates category and returns 201",
 			body: map[string]any{"name": "Kitchen", "icon_emoji": "🍳"},
-			mockFn: func(name, iconEmoji string) (*models.Category, error) {
+			mockFn: func(ctx context.Context, name, iconEmoji string) (*models.Category, error) {
 				if name != "Kitchen" {
 					t.Errorf("name: got %q, want Kitchen", name)
 				}
@@ -476,15 +483,19 @@ func TestCreateCategory(t *testing.T) {
 			wantStatus: http.StatusBadRequest,
 		},
 		{
-			name:       "duplicate name returns 409",
-			body:       map[string]any{"name": "Bathroom"},
-			mockFn:     func(name, iconEmoji string) (*models.Category, error) { return nil, repository.ErrDuplicate },
+			name: "duplicate name returns 409",
+			body: map[string]any{"name": "Bathroom"},
+			mockFn: func(ctx context.Context, name, iconEmoji string) (*models.Category, error) {
+				return nil, repository.ErrDuplicate
+			},
 			wantStatus: http.StatusConflict,
 		},
 		{
-			name:       "db error returns 500",
-			body:       map[string]any{"name": "Kitchen"},
-			mockFn:     func(name, iconEmoji string) (*models.Category, error) { return nil, errors.New("db error") },
+			name: "db error returns 500",
+			body: map[string]any{"name": "Kitchen"},
+			mockFn: func(ctx context.Context, name, iconEmoji string) (*models.Category, error) {
+				return nil, errors.New("db error")
+			},
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -495,7 +506,7 @@ func TestCreateCategory(t *testing.T) {
 			if tt.mockFn != nil {
 				mock.CreateCategoryFn = tt.mockFn
 			} else {
-				mock.CreateCategoryFn = func(name, iconEmoji string) (*models.Category, error) {
+				mock.CreateCategoryFn = func(ctx context.Context, name, iconEmoji string) (*models.Category, error) {
 					t.Error("repository should not have been called")
 					return nil, nil
 				}
@@ -522,14 +533,14 @@ func TestConsumeItem(t *testing.T) {
 		name       string
 		urlID      string
 		body       any
-		mockFn     func(id int, amount float64, reason string) error
+		mockFn     func(ctx context.Context, id int, amount float64, reason string) error
 		wantStatus int
 	}{
 		{
 			name:  "valid consume returns 204",
 			urlID: "1",
 			body:  map[string]any{"amount": 2.0, "reason": "weekly use"},
-			mockFn: func(id int, amount float64, reason string) error {
+			mockFn: func(ctx context.Context, id int, amount float64, reason string) error {
 				if id != 1 || amount != 2.0 || reason != "weekly use" {
 					t.Errorf("unexpected args: id=%d amount=%v reason=%q", id, amount, reason)
 				}
@@ -541,7 +552,7 @@ func TestConsumeItem(t *testing.T) {
 			name:  "missing reason defaults to 'used'",
 			urlID: "1",
 			body:  map[string]any{"amount": 1.0},
-			mockFn: func(id int, amount float64, reason string) error {
+			mockFn: func(ctx context.Context, id int, amount float64, reason string) error {
 				if reason != "used" {
 					t.Errorf("reason: got %q, want 'used'", reason)
 				}
@@ -574,21 +585,23 @@ func TestConsumeItem(t *testing.T) {
 			name:       "item not found returns 404",
 			urlID:      "99",
 			body:       map[string]any{"amount": 1.0},
-			mockFn:     func(id int, amount float64, reason string) error { return repository.ErrNotFound },
+			mockFn:     func(ctx context.Context, id int, amount float64, reason string) error { return repository.ErrNotFound },
 			wantStatus: http.StatusNotFound,
 		},
 		{
-			name:       "insufficient stock returns 422",
-			urlID:      "1",
-			body:       map[string]any{"amount": 999.0},
-			mockFn:     func(id int, amount float64, reason string) error { return repository.ErrInsufficientStock },
+			name:  "insufficient stock returns 422",
+			urlID: "1",
+			body:  map[string]any{"amount": 999.0},
+			mockFn: func(ctx context.Context, id int, amount float64, reason string) error {
+				return repository.ErrInsufficientStock
+			},
 			wantStatus: http.StatusUnprocessableEntity,
 		},
 		{
 			name:       "db error returns 500",
 			urlID:      "1",
 			body:       map[string]any{"amount": 1.0},
-			mockFn:     func(id int, amount float64, reason string) error { return errors.New("db error") },
+			mockFn:     func(ctx context.Context, id int, amount float64, reason string) error { return errors.New("db error") },
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -599,7 +612,7 @@ func TestConsumeItem(t *testing.T) {
 			if tt.mockFn != nil {
 				mock.ConsumeItemFn = tt.mockFn
 			} else {
-				mock.ConsumeItemFn = func(id int, amount float64, reason string) error {
+				mock.ConsumeItemFn = func(ctx context.Context, id int, amount float64, reason string) error {
 					t.Error("repository should not have been called")
 					return nil
 				}
@@ -625,14 +638,14 @@ func TestRestockItem(t *testing.T) {
 		name       string
 		urlID      string
 		body       any
-		mockFn     func(id int, amount float64, pricePaid *float64) error
+		mockFn     func(ctx context.Context, id int, amount float64, pricePaid *float64) error
 		wantStatus int
 	}{
 		{
 			name:  "valid restock without price returns 204",
 			urlID: "2",
 			body:  map[string]any{"amount": 5.0},
-			mockFn: func(id int, amount float64, pricePaid *float64) error {
+			mockFn: func(ctx context.Context, id int, amount float64, pricePaid *float64) error {
 				if id != 2 || amount != 5.0 || pricePaid != nil {
 					t.Errorf("unexpected args: id=%d amount=%v pricePaid=%v", id, amount, pricePaid)
 				}
@@ -644,7 +657,7 @@ func TestRestockItem(t *testing.T) {
 			name:  "valid restock with price passes price to repo",
 			urlID: "2",
 			body:  map[string]any{"amount": 3.0, "price_paid": price},
-			mockFn: func(id int, amount float64, pricePaid *float64) error {
+			mockFn: func(ctx context.Context, id int, amount float64, pricePaid *float64) error {
 				if pricePaid == nil || *pricePaid != price {
 					t.Errorf("price_paid: got %v, want %v", pricePaid, price)
 				}
@@ -667,17 +680,21 @@ func TestRestockItem(t *testing.T) {
 			wantStatus: http.StatusBadRequest,
 		},
 		{
-			name:       "item not found returns 404",
-			urlID:      "99",
-			body:       map[string]any{"amount": 1.0},
-			mockFn:     func(id int, amount float64, pricePaid *float64) error { return repository.ErrNotFound },
+			name:  "item not found returns 404",
+			urlID: "99",
+			body:  map[string]any{"amount": 1.0},
+			mockFn: func(ctx context.Context, id int, amount float64, pricePaid *float64) error {
+				return repository.ErrNotFound
+			},
 			wantStatus: http.StatusNotFound,
 		},
 		{
-			name:       "db error returns 500",
-			urlID:      "2",
-			body:       map[string]any{"amount": 1.0},
-			mockFn:     func(id int, amount float64, pricePaid *float64) error { return errors.New("db error") },
+			name:  "db error returns 500",
+			urlID: "2",
+			body:  map[string]any{"amount": 1.0},
+			mockFn: func(ctx context.Context, id int, amount float64, pricePaid *float64) error {
+				return errors.New("db error")
+			},
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -688,7 +705,7 @@ func TestRestockItem(t *testing.T) {
 			if tt.mockFn != nil {
 				mock.RestockItemFn = tt.mockFn
 			} else {
-				mock.RestockItemFn = func(id int, amount float64, pricePaid *float64) error {
+				mock.RestockItemFn = func(ctx context.Context, id int, amount float64, pricePaid *float64) error {
 					t.Error("repository should not have been called")
 					return nil
 				}

@@ -1,4 +1,4 @@
-module github.com/home-storage/api
+module github.com/serjyuriev/home-storage/api
 
 go 1.26.1
 

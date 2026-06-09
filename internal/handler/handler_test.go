@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/home-storage/api/internal/handler"
-	"github.com/home-storage/api/internal/models"
-	"github.com/home-storage/api/internal/repository"
-	"github.com/home-storage/api/internal/router"
+	"github.com/serjyuriev/home-storage/api/internal/handler"
+	"github.com/serjyuriev/home-storage/api/internal/models"
+	"github.com/serjyuriev/home-storage/api/internal/repository"
+	"github.com/serjyuriev/home-storage/api/internal/router"
 )
 
 func bodyJSON(v any) *bytes.Buffer {

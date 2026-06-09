@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/home-storage/api/internal/config"
 	"github.com/redis/go-redis/v9"
+	"github.com/serjyuriev/home-storage/api/internal/config"
 )
 
 func New(cfg config.Config) (*redis.Client, error) {

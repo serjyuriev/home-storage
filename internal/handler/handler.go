@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/home-storage/api/internal/models"
-	"github.com/home-storage/api/internal/repository"
+	"github.com/serjyuriev/home-storage/api/internal/models"
+	"github.com/serjyuriev/home-storage/api/internal/repository"
 )
 
 type CreateCategoryRequest struct {

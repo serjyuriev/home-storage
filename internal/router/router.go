@@ -2,7 +2,7 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/home-storage/api/internal/handler"
+	"github.com/serjyuriev/home-storage/api/internal/handler"
 )
 
 func Setup(h *handler.Handler) *gin.Engine {

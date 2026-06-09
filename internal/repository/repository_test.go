@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/home-storage/api/internal/config"
-	"github.com/home-storage/api/internal/models"
-	"github.com/home-storage/api/internal/repository"
+	"github.com/serjyuriev/home-storage/api/internal/config"
+	"github.com/serjyuriev/home-storage/api/internal/models"
+	"github.com/serjyuriev/home-storage/api/internal/repository"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

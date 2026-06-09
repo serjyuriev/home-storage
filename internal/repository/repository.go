@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/home-storage/api/internal/models"
+	"github.com/serjyuriev/home-storage/api/internal/models"
 	"gorm.io/gorm"
 )
 

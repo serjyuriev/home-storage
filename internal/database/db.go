@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/home-storage/api/internal/config"
+	"github.com/serjyuriev/home-storage/api/internal/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

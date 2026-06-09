@@ -10,13 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/home-storage/api/internal/cache"
-	"github.com/home-storage/api/internal/config"
-	"github.com/home-storage/api/internal/database"
-	"github.com/home-storage/api/internal/handler"
-	"github.com/home-storage/api/internal/repository"
-	"github.com/home-storage/api/internal/router"
 	"github.com/redis/go-redis/v9"
+	"github.com/serjyuriev/home-storage/api/internal/cache"
+	"github.com/serjyuriev/home-storage/api/internal/config"
+	"github.com/serjyuriev/home-storage/api/internal/database"
+	"github.com/serjyuriev/home-storage/api/internal/handler"
+	"github.com/serjyuriev/home-storage/api/internal/repository"
+	"github.com/serjyuriev/home-storage/api/internal/router"
 )
 
 func main() {

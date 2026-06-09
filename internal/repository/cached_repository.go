@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/home-storage/api/internal/models"
 	"github.com/redis/go-redis/v9"
+	"github.com/serjyuriev/home-storage/api/internal/models"
 )
 
 const (
